@@ -1,21 +1,27 @@
+import Foundation
 import UIKit
 
-public protocol PaginatedScrollViewDataSource: class {
+public protocol PaginatedScrollViewDataSource: AnyObject {
     func numberOfPagesInPaginatedScrollView(_ paginatedScrollView: PaginatedScrollView) -> Int
     func paginatedScrollView(_ paginatedScrollView: PaginatedScrollView, controllerAtIndex index: Int) -> UIViewController
 }
 
-public protocol PaginatedScrollViewDelegate: class {
-    func paginatedScrollView(_ paginatedScrollView: PaginatedScrollView, willMoveFromIndex index: Int)
+public protocol PaginatedScrollViewDelegate: AnyObject {
     func paginatedScrollView(_ paginatedScrollView: PaginatedScrollView, didMoveToIndex index: Int)
+    func paginatedScrollView(_ paginatedScrollView: PaginatedScrollView, willMoveFromIndex index: Int)
+}
+
+extension PaginatedScrollViewDelegate {
+    func paginatedScrollView(_ paginatedScrollView: PaginatedScrollView, willMoveFromIndex index: Int) {}
 }
 
 open class PaginatedScrollView: UIScrollView {
     open weak var viewDataSource: PaginatedScrollViewDataSource?
     open weak var viewDelegate: PaginatedScrollViewDelegate?
-    fileprivate unowned var parentController: UIViewController
-    fileprivate var currentPage: Int
-    fileprivate var shoudEvaluatePageChange = false
+    
+    private weak var parentController: UIViewController?
+    private var currentPage: Int
+    private var shoudEvaluatePageChange = false
 
     public init(frame: CGRect, parentController: UIViewController, initialPage: Int) {
         self.parentController = parentController
@@ -23,10 +29,8 @@ open class PaginatedScrollView: UIScrollView {
 
         super.init(frame: frame)
 
-        #if os(iOS)
-            isPagingEnabled = true
-            scrollsToTop = false
-        #endif
+        isPagingEnabled = true
+        scrollsToTop = false
         showsHorizontalScrollIndicator = false
         showsVerticalScrollIndicator = false
 
@@ -54,35 +58,6 @@ open class PaginatedScrollView: UIScrollView {
         gotoPage(currentPage, animated: false)
     }
 
-    fileprivate func loadScrollViewWithPage(_ page: Int) {
-        let numPages = viewDataSource?.numberOfPagesInPaginatedScrollView(self) ?? 0
-        if page >= numPages || page < 0 {
-            return
-        }
-
-        if let controller = viewDataSource?.paginatedScrollView(self, controllerAtIndex: page), controller.view.superview == nil {
-            var frame = self.frame
-            frame.origin.x = frame.size.width * CGFloat(page)
-            frame.origin.y = 0
-            controller.view.frame = frame
-
-            parentController.addChild(controller)
-            addSubview(controller.view)
-            controller.didMove(toParent: parentController)
-        }
-    }
-
-    public func gotoPage(_ page: Int, animated: Bool) {
-        loadScrollViewWithPage(page - 1)
-        loadScrollViewWithPage(page)
-        loadScrollViewWithPage(page + 1)
-
-        var bounds = self.bounds
-        bounds.origin.x = bounds.size.width * CGFloat(page)
-        bounds.origin.y = 0
-        scrollRectToVisible(bounds, animated: animated)
-    }
-
     public func goToNextPage(animated: Bool) {
         let numPages = viewDataSource?.numberOfPagesInPaginatedScrollView(self) ?? 0
         let newPage = currentPage + 1
@@ -103,8 +78,48 @@ open class PaginatedScrollView: UIScrollView {
             currentPage = newPage
         }
     }
+    
+    public func goToPage(_ page: Int, animated: Bool) {
+        gotoPage(page, animated: animated)
+        viewDelegate?.paginatedScrollView(self, willMoveFromIndex: currentPage)
+        viewDelegate?.paginatedScrollView(self, didMoveToIndex: page)
+        currentPage = page
+    }
+}
+ 
+// MARK: - Private methods
+private extension PaginatedScrollView {
+    func gotoPage(_ page: Int, animated: Bool) {
+        loadScrollViewWithPage(page - 1)
+        loadScrollViewWithPage(page)
+        loadScrollViewWithPage(page + 1)
+
+        var bounds = self.bounds
+        bounds.origin.x = bounds.size.width * CGFloat(page)
+        bounds.origin.y = 0
+        scrollRectToVisible(bounds, animated: animated)
+    }
+    
+    func loadScrollViewWithPage(_ page: Int) {
+        let numPages = viewDataSource?.numberOfPagesInPaginatedScrollView(self) ?? 0
+        if page >= numPages || page < 0 {
+            return
+        }
+
+        if let controller = viewDataSource?.paginatedScrollView(self, controllerAtIndex: page), controller.view.superview == nil {
+            var frame = self.frame
+            frame.origin.x = frame.size.width * CGFloat(page)
+            frame.origin.y = 0
+            controller.view.frame = frame
+
+            parentController?.addChild(controller)
+            addSubview(controller.view)
+            controller.didMove(toParent: parentController)
+        }
+    }
 }
 
+// MARK: - UIScrollViewDelegate
 extension PaginatedScrollView: UIScrollViewDelegate {
     public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         shoudEvaluatePageChange = true
