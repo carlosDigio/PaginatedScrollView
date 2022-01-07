@@ -11,10 +11,6 @@ public protocol PaginatedScrollViewDelegate: AnyObject {
     func paginatedScrollView(_ paginatedScrollView: PaginatedScrollView, willMoveFromIndex index: Int)
 }
 
-extension PaginatedScrollViewDelegate {
-    func paginatedScrollView(_ paginatedScrollView: PaginatedScrollView, willMoveFromIndex index: Int) {}
-}
-
 open class PaginatedScrollView: UIScrollView {
     open weak var viewDataSource: PaginatedScrollViewDataSource?
     open weak var viewDelegate: PaginatedScrollViewDelegate?
