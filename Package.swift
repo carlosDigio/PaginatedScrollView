@@ -1,3 +1,4 @@
+// swift-tools-version:5.9
 // Licensed under the **MIT** license
 // Copyright (c) 2016 Elvis Nuñez
 //
@@ -23,5 +24,22 @@
 import PackageDescription
 
 let package = Package(
-  name: "PaginatedScrollView"
+    name: "PaginatedScrollView",
+    platforms: [
+        .iOS(.v12),
+        .tvOS(.v12)
+    ],
+    products: [
+        .library(
+            name: "PaginatedScrollView",
+            targets: ["PaginatedScrollView"]
+        )
+    ],
+    targets: [
+        .target(
+            name: "PaginatedScrollView",
+            path: "Sources"
+        )
+    ],
+    swiftLanguageVersions: [.v5]
 )
